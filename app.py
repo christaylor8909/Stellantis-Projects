@@ -223,7 +223,17 @@ def index():
 @app.route('/health')
 def health_check():
     """Simple health check endpoint for Railway"""
-    return jsonify({'status': 'healthy', 'message': 'STELLANTIS Training Report Processor is running'})
+    return jsonify({
+        'status': 'healthy', 
+        'message': 'STELLANTIS Training Report Processor is running',
+        'timestamp': datetime.now().isoformat(),
+        'port': os.environ.get('PORT', '5000')
+    })
+
+@app.route('/test')
+def test():
+    """Simple test endpoint"""
+    return "STELLANTIS Training Report Processor is working! 🚀"
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -358,11 +368,24 @@ def add_pattern():
     
     return jsonify({'success': True, 'message': f'Added {pattern_type} pattern: {new_pattern}'})
 
+# CRITICAL: This is the key fix for Railway deployment
 if __name__ == '__main__':
+    # Get port from environment variable (Railway sets this)
     port = int(os.environ.get('PORT', 5000))
-    print(f"Starting STELLANTIS Training Report Processor on port {port}")
+    
+    print(f"🚀 Starting STELLANTIS Training Report Processor...")
+    print(f"📡 Port: {port}")
+    print(f"🌐 Host: 0.0.0.0")
+    print(f"🔗 Health check available at: http://0.0.0.0:{port}/health")
+    
     try:
-        app.run(debug=False, host='0.0.0.0', port=port)
+        # Start the Flask app with production settings
+        app.run(
+            debug=False,           # Disable debug mode for production
+            host='0.0.0.0',       # Bind to all interfaces
+            port=port,            # Use Railway's PORT
+            threaded=True         # Enable threading for better performance
+        )
     except Exception as e:
-        print(f"Error starting app: {e}")
+        print(f"❌ Error starting app: {e}")
         raise
