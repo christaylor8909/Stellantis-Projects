@@ -1,14 +1,29 @@
 from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for
-import pandas as pd
 import os
 from datetime import datetime
-import re
-import tempfile
-from werkzeug.utils import secure_filename
 import json
 
+# Create Flask app immediately
 app = Flask(__name__)
-app.secret_key = 'stellantis_training_2024'  # Change this for production
+app.secret_key = 'stellantis_training_2024'
+
+# Upload folder configuration
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
+
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Lazy load heavy dependencies only when needed
+def get_pandas():
+    import pandas as pd
+    return pd
+
+def get_re():
+    import re
+    return re
 
 # Configuration for easy pattern management
 CONFIG = {
@@ -75,20 +90,12 @@ CONFIG = {
     ]
 }
 
-# Upload folder configuration
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
-
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def identify_level1_trainings(df):
     """Identify Level 1 training titles with flexible pattern matching"""
+    re = get_re()
     level1_patterns = CONFIG['level1_patterns']
     
     level1_titles = set()
@@ -103,6 +110,7 @@ def identify_level1_trainings(df):
 
 def identify_level2_trainings(df):
     """Identify Level 2 training titles with flexible pattern matching"""
+    re = get_re()
     level2_patterns = CONFIG['level2_patterns']
     
     level2_titles = set()
@@ -199,9 +207,9 @@ def calculate_completion_percentages(df, level1_titles, level2_titles):
 def create_stellantis_report(completion_data):
     """Create a STELLANTIS format report DataFrame"""
     if not completion_data:
-        return pd.DataFrame()
+        return get_pandas().DataFrame()
         
-    df = pd.DataFrame(completion_data)
+    df = get_pandas().DataFrame(completion_data)
     
     # Reorder columns to match STELLANTIS format with assigned counts
     column_order = [
@@ -250,6 +258,9 @@ def upload_file():
     
     if file and allowed_file(file.filename):
         try:
+            # Lazy load werkzeug only when needed
+            from werkzeug.utils import secure_filename
+            
             # Save uploaded file
             filename = secure_filename(file.filename)
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -271,6 +282,8 @@ def upload_file():
 
 def process_training_report(filepath, selected_job_role):
     """Process the training report and return results"""
+    pd = get_pandas()
+    
     # Load the Excel file
     df_original = pd.read_excel(filepath, header=None)
     
@@ -368,7 +381,7 @@ def add_pattern():
     
     return jsonify({'success': True, 'message': f'Added {pattern_type} pattern: {new_pattern}'})
 
-# CRITICAL: This is the key fix for Railway deployment
+# CRITICAL: Fast startup for Railway
 if __name__ == '__main__':
     # Get port from environment variable (Railway sets this)
     port = int(os.environ.get('PORT', 5000))
@@ -377,6 +390,7 @@ if __name__ == '__main__':
     print(f"📡 Port: {port}")
     print(f"🌐 Host: 0.0.0.0")
     print(f"🔗 Health check available at: http://0.0.0.0:{port}/health")
+    print(f"⚡ Fast startup mode enabled")
     
     try:
         # Start the Flask app with production settings
