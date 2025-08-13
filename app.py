@@ -220,6 +220,11 @@ def create_stellantis_report(completion_data):
 def index():
     return render_template('index.html', job_roles=CONFIG['target_job_roles'])
 
+@app.route('/health')
+def health_check():
+    """Simple health check endpoint for Railway"""
+    return jsonify({'status': 'healthy', 'message': 'STELLANTIS Training Report Processor is running'})
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
@@ -355,4 +360,9 @@ def add_pattern():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    print(f"Starting STELLANTIS Training Report Processor on port {port}")
+    try:
+        app.run(debug=False, host='0.0.0.0', port=port)
+    except Exception as e:
+        print(f"Error starting app: {e}")
+        raise
