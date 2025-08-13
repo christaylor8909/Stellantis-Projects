@@ -1,14 +1,20 @@
-from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for
-import pandas as pd
 import os
-from datetime import datetime
-import re
-import tempfile
-from werkzeug.utils import secure_filename
+import http.server
+import socketserver
 import json
+import tempfile
+import base64
+from datetime import datetime
+import io
 
-app = Flask(__name__)
-app.secret_key = 'stellantis_training_2024'
+# Import heavy dependencies only when needed
+def get_pandas():
+    import pandas as pd
+    return pd
+
+def get_re():
+    import re
+    return re
 
 # Configuration for easy pattern management
 CONFIG = {
@@ -75,20 +81,9 @@ CONFIG = {
     ]
 }
 
-# Upload folder configuration
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
-
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
 def identify_level1_trainings(df):
     """Identify Level 1 training titles with flexible pattern matching"""
+    re = get_re()
     level1_patterns = CONFIG['level1_patterns']
     
     level1_titles = set()
@@ -103,6 +98,7 @@ def identify_level1_trainings(df):
 
 def identify_level2_trainings(df):
     """Identify Level 2 training titles with flexible pattern matching"""
+    re = get_re()
     level2_patterns = CONFIG['level2_patterns']
     
     level2_titles = set()
@@ -199,9 +195,9 @@ def calculate_completion_percentages(df, level1_titles, level2_titles):
 def create_stellantis_report(completion_data):
     """Create a STELLANTIS format report DataFrame"""
     if not completion_data:
-        return pd.DataFrame()
+        return get_pandas().DataFrame()
         
-    df = pd.DataFrame(completion_data)
+    df = get_pandas().DataFrame(completion_data)
     
     # Reorder columns to match STELLANTIS format with assigned counts
     column_order = [
@@ -216,61 +212,351 @@ def create_stellantis_report(completion_data):
     
     return df
 
-@app.route('/')
-def index():
-    return render_template('index.html', job_roles=CONFIG['target_job_roles'])
+# HTML template for the main page
+MAIN_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STELLANTIS Training Report Processor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: #1a1a2e;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        .upload-area {
+            background: white;
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f8f9ff;
+        }
+        .file-input {
+            display: none;
+        }
+        .upload-btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        .upload-btn:hover {
+            background: #764ba2;
+        }
+        .file-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9ff;
+            border-radius: 5px;
+            display: none;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .job-role-select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .process-btn {
+            background: #28a745;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .process-btn:hover {
+            background: #218838;
+        }
+        .process-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .results {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚗 STELLANTIS Training Report Processor</h1>
+            <p>Focused on: SAL-2, SAL-3, SER-12, SER-1, SER-2 Job Roles</p>
+        </div>
+        
+        <div class="upload-area" id="uploadArea">
+            <h3>📊 Upload Training Report Excel File</h3>
+            <p>Select your Enterprise Training Report Excel file to process</p>
+            <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls">
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Choose File</button>
+            <div class="file-info" id="fileInfo"></div>
+        </div>
+        
+        <div class="controls">
+            <div>
+                <label for="jobRole">Job Role Filter:</label>
+                <select id="jobRole" class="job-role-select">
+                    <option value="All">All Target Job Roles</option>
+                    <option value="SAL-2-New Vehicles Sales Advisor">SAL-2-New Vehicles Sales Advisor</option>
+                    <option value="SAL-3-New Vehicles Sales Manager">SAL-3-New Vehicles Sales Manager</option>
+                    <option value="SER-12-Technician">SER-12-Technician</option>
+                    <option value="SER-1-Aftersales Manager">SER-1-Aftersales Manager</option>
+                    <option value="SER-2-Service Advisor">SER-2-Service Advisor</option>
+                </select>
+            </div>
+            <button class="process-btn" id="processBtn" onclick="processFile()" disabled>⚙️ Generate Training Report</button>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing your training report...</p>
+        </div>
+        
+        <div class="results" id="results"></div>
+    </div>
 
-@app.route('/health')
-def health_check():
-    """Simple health check endpoint for Railway"""
-    return jsonify({
-        'status': 'healthy', 
-        'message': 'STELLANTIS Training Report Processor is running',
-        'timestamp': datetime.now().isoformat(),
-        'port': os.environ.get('PORT', '5000')
-    })
+    <script>
+        let selectedFile = null;
+        
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = file;
+                document.getElementById('fileInfo').innerHTML = `
+                    <strong>File Selected:</strong> ${file.name}<br>
+                    <strong>Size:</strong> ${(file.size / (1024 * 1024)).toFixed(2)} MB
+                `;
+                document.getElementById('fileInfo').style.display = 'block';
+                document.getElementById('processBtn').disabled = false;
+            }
+        });
+        
+        function processFile() {
+            if (!selectedFile) return;
+            
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('job_role', document.getElementById('jobRole').value);
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loading').style.display = 'none';
+                if (data.success) {
+                    showResults(data);
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error occurred'));
+                }
+            })
+            .catch(error => {
+                document.getElementById('loading').style.display = 'none';
+                alert('Error: ' + error.message);
+            });
+        }
+        
+        function showResults(data) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <h3>✅ Report Generated Successfully!</h3>
+                <p><strong>Total Individuals:</strong> ${data.total_individuals}</p>
+                <p><strong>Level 1 Trainings Found:</strong> ${data.level1_titles_count}</p>
+                <p><strong>Level 2 Trainings Found:</strong> ${data.level2_titles_count}</p>
+                <p><strong>Average Level 1 Completion:</strong> ${data.avg_level1_completion}%</p>
+                <p><strong>Average Level 2 Completion:</strong> ${data.avg_level2_completion}%</p>
+                <p><strong>Average Assigned Level 1:</strong> ${data.avg_assigned_level1}</p>
+                <p><strong>Average Assigned Level 2:</strong> ${data.avg_assigned_level2}</p>
+                <br>
+                <a href="/download/${data.filename}" class="upload-btn">📥 Download Excel Report</a>
+            `;
+            resultsDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
+"""
 
-@app.route('/test')
-def test():
-    """Simple test endpoint"""
-    return "STELLANTIS Training Report Processor is working! 🚀"
-
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    if 'file' not in request.files:
-        flash('No file selected')
-        return redirect(request.url)
+# Simple HTTP server for Railway with training report functionality
+class TrainingReportHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            self.wfile.write(MAIN_HTML.encode('utf-8'))
+        elif self.path == '/health':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            response = {
+                'status': 'healthy',
+                'message': 'STELLANTIS Training Report Processor is running',
+                'timestamp': datetime.now().isoformat(),
+                'port': os.environ.get('PORT', '5000')
+            }
+            self.wfile.write(json.dumps(response).encode())
+        elif self.path == '/test':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write("STELLANTIS Training Report Processor is working! 🚀".encode('utf-8'))
+        elif self.path.startswith('/download/'):
+            filename = self.path.split('/download/')[1]
+            filepath = os.path.join('uploads', filename)
+            if os.path.exists(filepath):
+                self.send_response(200)
+                self.send_header('Content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                self.send_header('Content-Disposition', f'attachment; filename="{filename}"')
+                self.end_headers()
+                with open(filepath, 'rb') as f:
+                    self.wfile.write(f.read())
+            else:
+                self.send_response(404)
+                self.end_headers()
+                self.wfile.write(b"File not found")
+        else:
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(b"Not found")
     
-    file = request.files['file']
-    selected_job_role = request.form.get('job_role', 'All')
+    def do_POST(self):
+        if self.path == '/upload':
+            self.handle_upload()
+        else:
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(b"Not found")
     
-    if file.filename == '':
-        flash('No file selected')
-        return redirect(request.url)
-    
-    if file and allowed_file(file.filename):
+    def handle_upload(self):
         try:
-            # Save uploaded file
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
             
-            # Process the file
-            result = process_training_report(filepath, selected_job_role)
+            # Parse multipart form data
+            boundary = self.headers['Content-Type'].split('boundary=')[1]
+            parts = post_data.split(b'--' + boundary.encode())
             
-            # Clean up uploaded file
-            os.remove(filepath)
+            file_data = None
+            job_role = 'All'
             
-            return jsonify(result)
+            for part in parts:
+                if b'Content-Disposition: form-data' in part:
+                    if b'name="file"' in part:
+                        # Extract file data
+                        file_start = part.find(b'\r\n\r\n') + 4
+                        file_end = part.rfind(b'\r\n')
+                        file_data = part[file_start:file_end]
+                    elif b'name="job_role"' in part:
+                        # Extract job role
+                        value_start = part.find(b'\r\n\r\n') + 4
+                        value_end = part.rfind(b'\r\n')
+                        job_role = part[value_start:value_end].decode('utf-8')
             
+            if file_data:
+                # Save file temporarily
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"temp_upload_{timestamp}.xlsx"
+                filepath = os.path.join('uploads', filename)
+                
+                os.makedirs('uploads', exist_ok=True)
+                with open(filepath, 'wb') as f:
+                    f.write(file_data)
+                
+                # Process the file
+                result = process_training_report(filepath, job_role)
+                
+                # Clean up
+                os.remove(filepath)
+                
+                # Send response
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(result).encode())
+            else:
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': 'No file provided'}).encode())
+                
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
-    
-    flash('Invalid file type. Please upload an Excel file (.xlsx or .xls)')
-    return redirect(request.url)
+            self.send_response(500)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': str(e)}).encode())
 
 def process_training_report(filepath, selected_job_role):
     """Process the training report and return results"""
+    pd = get_pandas()
+    
     # Load the Excel file
     df_original = pd.read_excel(filepath, header=None)
     
@@ -299,7 +585,9 @@ def process_training_report(filepath, selected_job_role):
     # Generate output file
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_filename = f"STELLANTIS_Report_{timestamp}.xlsx"
-    output_path = os.path.join(app.config['UPLOAD_FOLDER'], output_filename)
+    output_path = os.path.join('uploads', output_filename)
+    
+    os.makedirs('uploads', exist_ok=True)
     
     with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
         summary_df.to_excel(writer, sheet_name='STELLANTIS_Training_Report', index=False)
@@ -343,32 +631,6 @@ def process_training_report(filepath, selected_job_role):
         'job_role_breakdown': df_clean['Position'].value_counts().to_dict()
     }
 
-@app.route('/download/<filename>')
-def download_file(filename):
-    return send_file(os.path.join(app.config['UPLOAD_FOLDER'], filename), as_attachment=True)
-
-@app.route('/api/patterns')
-def get_patterns():
-    """API endpoint to get current patterns"""
-    return jsonify(CONFIG)
-
-@app.route('/api/add_pattern', methods=['POST'])
-def add_pattern():
-    """API endpoint to add new patterns"""
-    data = request.get_json()
-    pattern_type = data.get('type')  # 'level1' or 'level2'
-    new_pattern = data.get('pattern')
-    
-    if pattern_type == 'level1':
-        if new_pattern not in CONFIG['level1_patterns']:
-            CONFIG['level1_patterns'].append(new_pattern)
-    elif pattern_type == 'level2':
-        if new_pattern not in CONFIG['level2_patterns']:
-            CONFIG['level2_patterns'].append(new_pattern)
-    
-    return jsonify({'success': True, 'message': f'Added {pattern_type} pattern: {new_pattern}'})
-
-# Production startup for Railway
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     
@@ -376,14 +638,8 @@ if __name__ == '__main__':
     print(f"📡 Port: {port}")
     print(f"🌐 Host: 0.0.0.0")
     print(f"🔗 Health check at: /health")
+    print(f"📊 Full training report functionality ready!")
     
-    try:
-        app.run(
-            debug=False,
-            host='0.0.0.0',
-            port=port,
-            threaded=True
-        )
-    except Exception as e:
-        print(f"❌ Error starting app: {e}")
-        raise
+    with socketserver.TCPServer(("0.0.0.0", port), TrainingReportHandler) as httpd:
+        print(f"✅ Server started on port {port}")
+        httpd.serve_forever()
