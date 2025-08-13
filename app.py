@@ -1,29 +1,39 @@
-from flask import Flask, jsonify
 import os
+import http.server
+import socketserver
 
-# Create minimal Flask app
-app = Flask(__name__)
+# Simple HTTP server for Railway
+class SimpleHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            self.wfile.write("STELLANTIS Training Report Processor - Ready! 🚀".encode('utf-8'))
+        elif self.path == '/health':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            response = f'{{"status": "healthy", "message": "STELLANTIS Training Report Processor is running", "port": "{os.environ.get("PORT", "5000")}"}}'
+            self.wfile.write(response.encode())
+        elif self.path == '/test':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.end_headers()
+            self.wfile.write("App is working! ✅".encode('utf-8'))
+        else:
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(b"Not found")
 
-@app.route('/')
-def index():
-    return "STELLANTIS Training Report Processor - Ready! 🚀"
-
-@app.route('/health')
-def health_check():
-    """Simple health check endpoint for Railway"""
-    return jsonify({
-        'status': 'healthy', 
-        'message': 'STELLANTIS Training Report Processor is running',
-        'port': os.environ.get('PORT', '5000')
-    })
-
-@app.route('/test')
-def test():
-    """Simple test endpoint"""
-    return "App is working! ✅"
-
-# App is ready for gunicorn
-print(f"🚀 STELLANTIS app loaded and ready!")
-print(f"📡 Will bind to port: {os.environ.get('PORT', '5000')}")
-print(f"🌐 Health check at: /")
-print(f"🔗 Test endpoint at: /test")
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    
+    print(f"🚀 Starting simple HTTP server...")
+    print(f"📡 Port: {port}")
+    print(f"🌐 Host: 0.0.0.0")
+    print(f"🔗 Health check at: /health")
+    
+    with socketserver.TCPServer(("0.0.0.0", port), SimpleHandler) as httpd:
+        print(f"✅ Server started on port {port}")
+        httpd.serve_forever()
