@@ -219,7 +219,7 @@ MAIN_HTML = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>STELLANTIS Training Report Processor</title>
+    <title>Stellantis Training Report Processor</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -450,7 +450,7 @@ MAIN_HTML = """
 <body>
     <div class="main-container">
         <div class="header">
-            <h1><i class="fas fa-car"></i> STELLANTIS Training Report Processor</h1>
+            <h1>Stellantis Training Report Processor</h1>
             <p>Focused on: SAL-2, SAL-3, SER-12, SER-1, SER-2 Job Roles</p>
         </div>
         
@@ -652,9 +652,9 @@ MAIN_HTML = """
             // Create download section
             const downloadHTML = `
                 <div class="download-section">
-                    <a href="/download/${data.filename}" class="btn-download">
-                        <i class="fas fa-download"></i> Download STELLANTIS Report
-                    </a>
+                                         <a href="/download/${data.filename}" class="btn-download">
+                         <i class="fas fa-download"></i> Download Stellantis Report
+                     </a>
                 </div>
             `;
             
@@ -680,7 +680,7 @@ class TrainingReportHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             response = {
                 'status': 'healthy',
-                'message': 'STELLANTIS Training Report Processor is running',
+                                 'message': 'Stellantis Training Report Processor is running',
                 'timestamp': datetime.now().isoformat(),
                 'port': os.environ.get('PORT', '5000')
             }
@@ -689,7 +689,7 @@ class TrainingReportHandler(http.server.SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
-            self.wfile.write("STELLANTIS Training Report Processor is working! 🚀".encode('utf-8'))
+            self.wfile.write("Stellantis Training Report Processor is working! 🚀".encode('utf-8'))
         elif self.path.startswith('/download/'):
             filename = self.path.split('/download/')[1]
             filepath = os.path.join('uploads', filename)
@@ -806,13 +806,13 @@ def process_training_report(filepath, selected_job_role):
     
     # Generate output file
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_filename = f"STELLANTIS_Report_{timestamp}.xlsx"
+    output_filename = f"Stellantis_Report_{timestamp}.xlsx"
     output_path = os.path.join('uploads', output_filename)
     
     os.makedirs('uploads', exist_ok=True)
     
     with pd.ExcelWriter(output_path, engine='openpyxl') as writer:
-        summary_df.to_excel(writer, sheet_name='STELLANTIS_Training_Report', index=False)
+        summary_df.to_excel(writer, sheet_name='Stellantis_Training_Report', index=False)
         
         # Detailed completion summary
         if completion_data:
@@ -856,7 +856,7 @@ def process_training_report(filepath, selected_job_role):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     
-    print(f"🚀 Starting STELLANTIS Training Report Processor...")
+    print(f"🚀 Starting Stellantis Training Report Processor...")
     print(f"📡 Port: {port}")
     print(f"🌐 Host: 0.0.0.0")
     print(f"🔗 Health check at: /health")
