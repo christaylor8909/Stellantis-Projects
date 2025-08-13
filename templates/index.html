@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STELLANTIS Training Report Processor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            border-radius: 20px 20px 0 0;
+            padding: 2rem;
+        }
+        .upload-area {
+            border: 3px dashed #dee2e6;
+            border-radius: 15px;
+            padding: 3rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+        .upload-area:hover {
+            border-color: #007bff;
+            background: #e3f2fd;
+        }
+        .upload-area.dragover {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+        .progress {
+            height: 25px;
+            border-radius: 15px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-weight: 600;
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-weight: 600;
+        }
+        .results-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+        .table {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        .loading {
+            display: none;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="main-container">
+                    <!-- Header -->
+                    <div class="header text-center">
+                        <h1><i class="fas fa-chart-line me-3"></i>STELLANTIS Training Report Processor</h1>
+                        <p class="mb-0">Focused on: SAL-2, SAL-3, SER-12, SER-1, SER-2 Job Roles</p>
+                    </div>
+
+                    <!-- Main Content -->
+                    <div class="p-4">
+                        <!-- Upload Section -->
+                        <div class="upload-area" id="uploadArea">
+                            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                            <h4>Upload Training Report Excel File</h4>
+                            <p class="text-muted">Drag and drop your Excel file here or click to browse</p>
+                            <form id="uploadForm" enctype="multipart/form-data">
+                                <input type="file" id="fileInput" name="file" accept=".xlsx,.xls" class="d-none">
+                                <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                                    <i class="fas fa-folder-open me-2"></i>Choose File
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Job Role Selection -->
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <label for="jobRole" class="form-label">Job Role Filter:</label>
+                                <select class="form-select" id="jobRole" name="job_role">
+                                    <option value="All">All Target Job Roles</option>
+                                    {% for role in job_roles %}
+                                    <option value="{{ role }}">{{ role }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <button type="button" class="btn btn-success w-100" id="processBtn" onclick="processFile()">
+                                    <i class="fas fa-cogs me-2"></i>Generate Training Report
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Loading Section -->
+                        <div class="loading text-center mt-4" id="loadingSection">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <h5 class="mt-3">Processing your training report...</h5>
+                            <p class="text-muted">This may take a few moments depending on file size</p>
+                        </div>
+
+                        <!-- Results Section -->
+                        <div class="results-section" id="resultsSection" style="display: none;">
+                            <h3><i class="fas fa-chart-bar me-2"></i>Processing Results</h3>
+                            
+                            <!-- Summary Stats -->
+                            <div class="row" id="summaryStats">
+                                <!-- Stats will be populated here -->
+                            </div>
+
+                            <!-- Download Section -->
+                            <div class="text-center mt-4" id="downloadSection">
+                                <button class="btn btn-success btn-lg" id="downloadBtn">
+                                    <i class="fas fa-download me-2"></i>Download STELLANTIS Report
+                                </button>
+                            </div>
+
+                            <!-- Training Titles -->
+                            <div class="row mt-4">
+                                <div class="col-md-6">
+                                    <h5><i class="fas fa-list me-2"></i>Level 1 Training Titles</h5>
+                                    <div id="level1Titles" class="border rounded p-3 bg-light"></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h5><i class="fas fa-list me-2"></i>Level 2 Training Titles</h5>
+                                    <div id="level2Titles" class="border rounded p-3 bg-light"></div>
+                                </div>
+                            </div>
+
+                            <!-- Job Role Breakdown -->
+                            <div class="mt-4">
+                                <h5><i class="fas fa-users me-2"></i>Job Role Breakdown</h5>
+                                <div id="jobRoleBreakdown" class="border rounded p-3 bg-light"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentFilename = '';
+
+        // Drag and drop functionality
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                updateFileDisplay();
+            }
+        });
+
+        fileInput.addEventListener('change', updateFileDisplay);
+
+        function updateFileDisplay() {
+            const file = fileInput.files[0];
+            if (file) {
+                uploadArea.innerHTML = `
+                    <i class="fas fa-file-excel fa-3x text-success mb-3"></i>
+                    <h4>File Selected: ${file.name}</h4>
+                    <p class="text-muted">Size: ${(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <button type="button" class="btn btn-outline-secondary" onclick="resetFile()">
+                        <i class="fas fa-times me-2"></i>Change File
+                    </button>
+                `;
+            }
+        }
+
+        function resetFile() {
+            fileInput.value = '';
+            uploadArea.innerHTML = `
+                <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                <h4>Upload Training Report Excel File</h4>
+                <p class="text-muted">Drag and drop your Excel file here or click to browse</p>
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <input type="file" id="fileInput" name="file" accept=".xlsx,.xls" class="d-none">
+                    <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                        <i class="fas fa-folder-open me-2"></i>Choose File
+                    </button>
+                </form>
+            `;
+            document.getElementById('resultsSection').style.display = 'none';
+        }
+
+        function processFile() {
+            const file = fileInput.files[0];
+            const jobRole = document.getElementById('jobRole').value;
+
+            if (!file) {
+                alert('Please select a file first.');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loadingSection').style.display = 'block';
+            document.getElementById('resultsSection').style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('job_role', jobRole);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loadingSection').style.display = 'none';
+                
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+
+                if (data.success) {
+                    currentFilename = data.filename;
+                    displayResults(data);
+                }
+            })
+            .catch(error => {
+                document.getElementById('loadingSection').style.display = 'none';
+                alert('Error processing file: ' + error.message);
+            });
+        }
+
+        function displayResults(data) {
+            // Display summary stats
+            const statsHtml = `
+                <div class="col-md-2">
+                    <div class="stats-card text-center">
+                        <i class="fas fa-users fa-2x mb-2"></i>
+                        <h4>${data.total_individuals}</h4>
+                        <p class="mb-0">Total Individuals</p>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="stats-card text-center">
+                        <i class="fas fa-graduation-cap fa-2x mb-2"></i>
+                        <h4>${data.level1_titles_count}</h4>
+                        <p class="mb-0">Level 1 Available</p>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="stats-card text-center">
+                        <i class="fas fa-certificate fa-2x mb-2"></i>
+                        <h4>${data.level2_titles_count}</h4>
+                        <p class="mb-0">Level 2 Available</p>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="stats-card text-center">
+                        <i class="fas fa-chart-pie fa-2x mb-2"></i>
+                        <h4>${data.avg_level1_completion}%</h4>
+                        <p class="mb-0">Avg Level 1 Completion</p>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="stats-card text-center">
+                        <i class="fas fa-chart-line fa-2x mb-2"></i>
+                        <h4>${data.avg_level2_completion}%</h4>
+                        <p class="mb-0">Avg Level 2 Completion</p>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="stats-card text-center">
+                        <i class="fas fa-tasks fa-2x mb-2"></i>
+                        <h4>${data.avg_assigned_level1}/${data.avg_assigned_level2}</h4>
+                        <p class="mb-0">Avg Assigned L1/L2</p>
+                    </div>
+                </div>
+            `;
+            document.getElementById('summaryStats').innerHTML = statsHtml;
+
+            // Display training titles
+            const level1Html = data.level1_titles.map(title => `<div class="mb-1"><i class="fas fa-check text-success me-2"></i>${title}</div>`).join('');
+            const level2Html = data.level2_titles.map(title => `<div class="mb-1"><i class="fas fa-check text-success me-2"></i>${title}</div>`).join('');
+            
+            document.getElementById('level1Titles').innerHTML = level1Html;
+            document.getElementById('level2Titles').innerHTML = level2Html;
+
+            // Display job role breakdown
+            const breakdownHtml = Object.entries(data.job_role_breakdown)
+                .map(([role, count]) => `<div class="mb-2"><strong>${role}:</strong> ${count} individuals</div>`)
+                .join('');
+            document.getElementById('jobRoleBreakdown').innerHTML = breakdownHtml;
+
+            // Show results section
+            document.getElementById('resultsSection').style.display = 'block';
+
+            // Setup download button
+            document.getElementById('downloadBtn').onclick = () => {
+                window.location.href = `/download/${data.filename}`;
+            };
+        }
+    </script>
+</body>
+</html>
