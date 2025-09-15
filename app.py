@@ -224,9 +224,10 @@ MAIN_HTML = """
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f8f9fa;
             min-height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
         }
         .main-container {
             max-width: 1200px;
@@ -234,174 +235,192 @@ MAIN_HTML = """
             padding: 20px;
         }
         .header {
-            background: #1a1a2e;
-            color: white;
+            background: #ffffff;
+            color: #333;
             padding: 30px;
-            border-radius: 15px;
+            border-radius: 8px;
             margin-bottom: 30px;
             text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
         }
         .header h1 {
             margin: 0;
-            font-size: 2.8em;
-            font-weight: 700;
+            font-size: 2.2em;
+            font-weight: 600;
+            color: #2c3e50;
         }
         .header p {
             margin: 10px 0 0 0;
-            opacity: 0.9;
-            font-size: 1.1em;
+            color: #6c757d;
+            font-size: 1em;
         }
         .upload-section {
             background: white;
-            border-radius: 15px;
-            padding: 40px;
+            border-radius: 8px;
+            padding: 30px;
             margin-bottom: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
         }
         .upload-area {
-            border: 3px dashed #667eea;
-            border-radius: 15px;
-            padding: 60px 40px;
+            border: 2px dashed #6c757d;
+            border-radius: 8px;
+            padding: 40px 30px;
             text-align: center;
             transition: all 0.3s ease;
-            background: #f8f9ff;
+            background: #f8f9fa;
         }
         .upload-area:hover {
-            border-color: #764ba2;
-            background: #f0f2ff;
+            border-color: #495057;
+            background: #e9ecef;
         }
         .upload-area.dragover {
             border-color: #28a745;
-            background: #f0fff4;
+            background: #d4edda;
         }
         .file-icon {
-            font-size: 4em;
-            color: #667eea;
-            margin-bottom: 20px;
+            font-size: 3em;
+            color: #6c757d;
+            margin-bottom: 15px;
         }
         .file-input {
             display: none;
         }
         .btn-primary {
-            background: #667eea;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 8px;
-            font-weight: 600;
+            background: #495057;
+            border: 1px solid #495057;
+            padding: 10px 25px;
+            border-radius: 6px;
+            font-weight: 500;
+            color: white;
         }
         .btn-primary:hover {
-            background: #764ba2;
+            background: #343a40;
+            border-color: #343a40;
         }
         .btn-success {
             background: #28a745;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 8px;
-            font-weight: 600;
+            border: 1px solid #28a745;
+            padding: 10px 25px;
+            border-radius: 6px;
+            font-weight: 500;
         }
         .btn-success:hover {
             background: #218838;
+            border-color: #1e7e34;
         }
         .file-info {
             margin-top: 20px;
-            padding: 20px;
-            background: #e8f4fd;
-            border-radius: 10px;
-            border-left: 4px solid #667eea;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 6px;
+            border-left: 4px solid #6c757d;
             display: none;
         }
         .controls-section {
             background: white;
-            border-radius: 15px;
-            padding: 30px;
+            border-radius: 8px;
+            padding: 25px;
             margin-bottom: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
         }
         .form-select {
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            padding: 12px;
-            font-size: 16px;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 14px;
         }
         .form-select:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            border-color: #495057;
+            box-shadow: 0 0 0 0.2rem rgba(73, 80, 87, 0.25);
         }
         .results-section {
             background: white;
-            border-radius: 15px;
-            padding: 30px;
+            border-radius: 8px;
+            padding: 25px;
             margin-bottom: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
             display: none;
         }
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
         }
         .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 25px;
-            border-radius: 12px;
+            background: #ffffff;
+            color: #333;
+            padding: 20px;
+            border-radius: 6px;
             text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: 1px solid #e9ecef;
         }
         .stat-card i {
-            font-size: 2em;
-            margin-bottom: 10px;
+            font-size: 1.5em;
+            margin-bottom: 8px;
+            color: #6c757d;
         }
         .stat-number {
-            font-size: 2.5em;
-            font-weight: 700;
+            font-size: 2em;
+            font-weight: 600;
             margin-bottom: 5px;
+            color: #2c3e50;
         }
         .stat-label {
-            font-size: 0.9em;
-            opacity: 0.9;
+            font-size: 0.85em;
+            color: #6c757d;
         }
         .training-titles {
             background: #f8f9fa;
-            border-radius: 10px;
+            border-radius: 6px;
             padding: 20px;
             margin-bottom: 20px;
+            border: 1px solid #e9ecef;
         }
         .training-titles h5 {
-            color: #667eea;
+            color: #2c3e50;
             margin-bottom: 15px;
+            font-weight: 600;
         }
         .training-list {
             max-height: 200px;
             overflow-y: auto;
             background: white;
-            border-radius: 8px;
+            border-radius: 6px;
             padding: 15px;
+            border: 1px solid #e9ecef;
         }
         .training-item {
-            padding: 8px 0;
-            border-bottom: 1px solid #eee;
+            padding: 6px 0;
+            border-bottom: 1px solid #e9ecef;
             font-size: 0.9em;
+            color: #495057;
         }
         .training-item:last-child {
             border-bottom: none;
         }
         .job-breakdown {
             background: #f8f9fa;
-            border-radius: 10px;
+            border-radius: 6px;
             padding: 20px;
+            border: 1px solid #e9ecef;
         }
         .job-breakdown h5 {
-            color: #667eea;
+            color: #2c3e50;
             margin-bottom: 15px;
+            font-weight: 600;
         }
         .job-item {
             display: flex;
             justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+            color: #495057;
         }
         .job-item:last-child {
             border-bottom: none;
@@ -412,11 +431,11 @@ MAIN_HTML = """
             display: none;
         }
         .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #6c757d;
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
+            width: 40px;
+            height: 40px;
             animation: spin 1s linear infinite;
             margin: 0 auto 20px;
         }
@@ -426,24 +445,24 @@ MAIN_HTML = """
         }
         .download-section {
             text-align: center;
-            margin-top: 30px;
+            margin-top: 25px;
         }
         .btn-download {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            background: #28a745;
             color: white;
-            padding: 15px 40px;
-            border: none;
-            border-radius: 10px;
-            font-size: 1.1em;
-            font-weight: 600;
+            padding: 12px 30px;
+            border: 1px solid #28a745;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 500;
             text-decoration: none;
             display: inline-block;
             transition: all 0.3s ease;
         }
         .btn-download:hover {
             color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+            background: #218838;
+            border-color: #1e7e34;
         }
     </style>
 </head>
@@ -535,7 +554,7 @@ MAIN_HTML = """
             selectedFile = file;
             document.getElementById('fileInfo').innerHTML = `
                 <div class="d-flex align-items-center">
-                    <i class="fas fa-file-excel text-success me-3" style="font-size: 2em;"></i>
+                    <i class="fas fa-file-excel me-3" style="font-size: 2em; color: #28a745;"></i>
                     <div>
                         <strong>File Selected:</strong> ${file.name}<br>
                         <strong>Size:</strong> ${(file.size / (1024 * 1024)).toFixed(2)} MB
@@ -621,7 +640,7 @@ MAIN_HTML = """
                         <div class="training-titles">
                             <h5><i class="fas fa-graduation-cap"></i> Level 1 Training Titles</h5>
                             <div class="training-list">
-                                ${data.level1_titles.map(title => `<div class="training-item"><i class="fas fa-check text-success me-2"></i>${title}</div>`).join('')}
+                                ${data.level1_titles.map(title => `<div class="training-item"><i class="fas fa-check me-2" style="color: #28a745;"></i>${title}</div>`).join('')}
                             </div>
                         </div>
                     </div>
@@ -629,7 +648,7 @@ MAIN_HTML = """
                         <div class="training-titles">
                             <h5><i class="fas fa-star"></i> Level 2 Training Titles</h5>
                             <div class="training-list">
-                                ${data.level2_titles.map(title => `<div class="training-item"><i class="fas fa-check text-success me-2"></i>${title}</div>`).join('')}
+                                ${data.level2_titles.map(title => `<div class="training-item"><i class="fas fa-check me-2" style="color: #28a745;"></i>${title}</div>`).join('')}
                             </div>
                         </div>
                     </div>
@@ -643,7 +662,7 @@ MAIN_HTML = """
                     ${Object.entries(data.job_role_breakdown).map(([role, count]) => 
                         `<div class="job-item">
                             <span>${role}</span>
-                            <span class="badge bg-primary">${count}</span>
+                            <span class="badge" style="background-color: #6c757d; color: white;">${count}</span>
                         </div>`
                     ).join('')}
                 </div>
