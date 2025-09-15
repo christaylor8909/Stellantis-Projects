@@ -5,3 +5,5 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: python wsgi.py
     plan: free
+    autoDeploy: true
+    branch: main
