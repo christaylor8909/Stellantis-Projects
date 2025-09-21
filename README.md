@@ -2,7 +2,7 @@
 
 A GUI application for processing enterprise training reports and generating STELLANTIS format reports with completion percentages for Level 1 and Level 2 trainings per individual.
 
-**🎯 Focused on: SAL-2, SAL-3, SER-12, SER-1, SER-2 Job Roles**
+**Focused on: SAL-2, SAL-3, SER-12, SER-1, SER-2 Job Roles**
 
 ## Features
 
